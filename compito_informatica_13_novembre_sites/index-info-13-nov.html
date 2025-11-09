@@ -467,8 +467,8 @@
          */
         async function caricaDomande() {
             try {
-                console.log('Caricamento domande da questions.json...');
-                const response = await fetch('questions.json');
+                console.log('Caricamento domande da GitHub...');
+                const response = await fetch('https://cdn.jsdelivr.net/gh/antoniolarosa83-creator/verifica_novembre@verifica_informatica_classi_seconda_quarta/compito_informatica_13_novembre_sites/questions.json');
 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -497,14 +497,14 @@
                 const container = document.getElementById('questionsContainer');
                 container.innerHTML = `<div class="error-message">
                     <h3>Errore nel caricamento delle domande</h3>
-                    <p>Impossibile caricare il file questions.json.</p>
-                    <p><strong>Assicurati che:</strong></p>
+                    <p>Impossibile caricare il file questions.json da GitHub.</p>
+                    <p><strong>Possibili cause:</strong></p>
                     <ul>
-                        <li>Il file questions.json si trova nella stessa cartella di questo file HTML</li>
-                        <li>Stai accedendo tramite un server HTTP (non file://)</li>
-                        <li>Il file non è corrotto</li>
+                        <li>Problemi di connessione internet</li>
+                        <li>Il file non è disponibile su GitHub</li>
+                        <li>CDN jsDelivr non raggiungibile</li>
                     </ul>
-                    <p style="color: #666; font-size: 0.9em;">Se usi Google Drive, visualizza tramite Google Drive Viewer.<br>Errore: ${error.message}</p>
+                    <p style="color: #666; font-size: 0.9em;">Verifica la tua connessione internet e ricarica la pagina.<br>Errore: ${error.message}</p>
                 </div>`;
             }
         }

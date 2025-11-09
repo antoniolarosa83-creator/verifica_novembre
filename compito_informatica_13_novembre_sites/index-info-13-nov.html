@@ -468,14 +468,45 @@
         async function caricaDomande() {
             try {
                 console.log('Caricamento domande da Google Drive...');
-                // Usa un servizio CORS proxy per accedere a Google Drive
                 const driveFileId = '1UWi_v2UVHHqJzJadJkQtS5jYnGStsaEd';
-                const url = `https://cors-anywhere.herokuapp.com/https://drive.google.com/uc?export=download&id=${driveFileId}`;
 
-                const response = await fetch(url);
+                // Prova diversi metodi per caricare il file da Google Drive
+                const urlOptions = [
+                    // Metodo 1: allorigins.win (più affidabile per Google Drive)
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveFileId}`)}`,
+                    // Metodo 2: corsproxy.io
+                    `https://corsproxy.io/?${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveFileId}`)}`,
+                    // Metodo 3: Formato export diretto (senza proxy)
+                    `https://drive.google.com/uc?export=download&id=${driveFileId}`
+                ];
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                let response;
+                let lastError;
+
+                // Prova ogni URL finché uno non funziona
+                for (let i = 0; i < urlOptions.length; i++) {
+                    try {
+                        console.log(`Tentativo ${i + 1} con URL: ${urlOptions[i].substring(0, 50)}...`);
+                        response = await fetch(urlOptions[i], {
+                            mode: 'cors',
+                            credentials: 'omit'
+                        });
+
+                        if (response.ok) {
+                            console.log(`Successo con URL ${i + 1}`);
+                            break;
+                        } else {
+                            lastError = `HTTP ${response.status}`;
+                            console.log(`Fallito URL ${i + 1}: ${lastError}`);
+                        }
+                    } catch (e) {
+                        lastError = e.message;
+                        console.log(`Errore URL ${i + 1}: ${lastError}`);
+                    }
+                }
+
+                if (!response || !response.ok) {
+                    throw new Error(`Nessun URL ha funzionato. Ultimo errore: ${lastError}`);
                 }
 
                 const dati = await response.json();
@@ -504,11 +535,11 @@
                     <p>Impossibile caricare il file questions.json da Google Drive.</p>
                     <p><strong>Possibili cause:</strong></p>
                     <ul>
+                        <li>Il file Google Drive non è condiviso correttamente</li>
                         <li>Problemi di connessione internet</li>
-                        <li>Il file non è disponibile o il link è scaduto</li>
-                        <li>Google Drive non raggiungibile</li>
+                        <li>Il servizio Google Drive è momentaneamente non disponibile</li>
                     </ul>
-                    <p style="color: #666; font-size: 0.9em;">Verifica la tua connessione internet e ricarica la pagina.<br>Errore: ${error.message}</p>
+                    <p style="color: #666; font-size: 0.9em;">Verifica che il file sia condiviso con "Chiunque abbia il link" e ricarica la pagina.<br>Errore: ${error.message}</p>
                 </div>`;
             }
         }

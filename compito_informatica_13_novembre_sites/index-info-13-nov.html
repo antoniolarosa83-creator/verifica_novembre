@@ -473,11 +473,25 @@
                 // Prova diversi metodi per caricare il file da Google Drive
                 const urlOptions = [
                     // Metodo 1: allorigins.win (più affidabile per Google Drive)
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveFileId}`)}`,
+                    {
+                        name: 'allorigins.win',
+                        url: `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveFileId}`)}`
+                    },
                     // Metodo 2: corsproxy.io
-                    `https://corsproxy.io/?${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveFileId}`)}`,
-                    // Metodo 3: Formato export diretto (senza proxy)
-                    `https://drive.google.com/uc?export=download&id=${driveFileId}`
+                    {
+                        name: 'corsproxy.io',
+                        url: `https://corsproxy.io/?${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveFileId}`)}`
+                    },
+                    // Metodo 3: Google Drive export diretto
+                    {
+                        name: 'Google Drive direct',
+                        url: `https://drive.google.com/uc?export=download&id=${driveFileId}`
+                    },
+                    // Metodo 4: CorsFlix (alternativa)
+                    {
+                        name: 'CorsFlix',
+                        url: `https://corsflic.herokuapp.com/?url=${encodeURIComponent(`https://drive.google.com/uc?export=download&id=${driveFileId}`)}`
+                    }
                 ];
 
                 let response;
@@ -486,33 +500,37 @@
                 // Prova ogni URL finché uno non funziona
                 for (let i = 0; i < urlOptions.length; i++) {
                     try {
-                        console.log(`Tentativo ${i + 1} con URL: ${urlOptions[i].substring(0, 50)}...`);
-                        response = await fetch(urlOptions[i], {
+                        const method = urlOptions[i];
+                        console.log(`[${i + 1}/${urlOptions.length}] Tentativo con ${method.name}...`);
+                        response = await fetch(method.url, {
                             mode: 'cors',
-                            credentials: 'omit'
+                            credentials: 'omit',
+                            timeout: 10000
                         });
 
+                        console.log(`${method.name}: HTTP ${response.status}`);
+
                         if (response.ok) {
-                            console.log(`Successo con URL ${i + 1}`);
+                            console.log(`✅ Successo con ${method.name}`);
                             break;
                         } else {
                             lastError = `HTTP ${response.status}`;
-                            console.log(`Fallito URL ${i + 1}: ${lastError}`);
+                            console.log(`❌ ${method.name} fallito: ${lastError}`);
                         }
                     } catch (e) {
                         lastError = e.message;
-                        console.log(`Errore URL ${i + 1}: ${lastError}`);
+                        console.log(`❌ ${urlOptions[i].name} errore: ${lastError}`);
                     }
                 }
 
                 if (!response || !response.ok) {
-                    throw new Error(`Nessun URL ha funzionato. Ultimo errore: ${lastError}`);
+                    throw new Error(`Tutti i metodi hanno fallito. Ultimo: ${lastError}`);
                 }
 
                 const dati = await response.json();
                 tutteLeDomande = dati.domande || [];
 
-                console.log(`Caricate ${tutteLeDomande.length} domande totali`);
+                console.log(`✅ Caricate ${tutteLeDomande.length} domande totali`);
 
                 if (tutteLeDomande.length === 0) {
                     throw new Error('Nessuna domanda trovata nel file JSON');
@@ -533,13 +551,14 @@
                 container.innerHTML = `<div class="error-message">
                     <h3>Errore nel caricamento delle domande</h3>
                     <p>Impossibile caricare il file questions.json da Google Drive.</p>
-                    <p><strong>Possibili cause:</strong></p>
-                    <ul>
-                        <li>Il file Google Drive non è condiviso correttamente</li>
-                        <li>Problemi di connessione internet</li>
-                        <li>Il servizio Google Drive è momentaneamente non disponibile</li>
-                    </ul>
-                    <p style="color: #666; font-size: 0.9em;">Verifica che il file sia condiviso con "Chiunque abbia il link" e ricarica la pagina.<br>Errore: ${error.message}</p>
+                    <p><strong>Soluzione:</strong></p>
+                    <ol>
+                        <li>Verifica che il file sia condiviso con <strong>"Chiunque abbia il link"</strong></li>
+                        <li>Apri la Console del Browser (F12 → Console) per vedere i dettagli dell'errore</li>
+                        <li>Ricarica la pagina (Ctrl+R o Cmd+R)</li>
+                        <li>Se l'errore persiste, contatta l'amministratore</li>
+                    </ol>
+                    <p style="color: #666; font-size: 0.9em;"><strong>Errore tecnico:</strong> ${error.message}</p>
                 </div>`;
             }
         }

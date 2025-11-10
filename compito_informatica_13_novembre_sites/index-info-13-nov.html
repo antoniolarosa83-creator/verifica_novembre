@@ -693,6 +693,7 @@
 
         function inviaAGoogleSheets(data) {
             console.log('Dati da inviare a Google Sheets:', data);
+            console.log('GOOGLE_SCRIPT_URL:', GOOGLE_SCRIPT_URL);
 
             // Mostra messaggio di caricamento
             const submitBtn = document.querySelector('.submit-btn');
@@ -703,58 +704,76 @@
             submitBtn.disabled = true;
             loadingSpinner.classList.add('active');
 
-            // Usa un CORS proxy per aggirare le restrizioni CORS di Google Apps Script
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(GOOGLE_SCRIPT_URL)}`;
-
-            fetch(proxyUrl, {
-                method: 'POST',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
+            // Opzioni di proxy per provare in sequenza
+            const proxyOptions = [
+                {
+                    name: 'corsproxy.io',
+                    url: `https://corsproxy.io/?${encodeURIComponent(GOOGLE_SCRIPT_URL)}`
                 },
-                body: JSON.stringify(data)
-            })
-            .then(response => {
-                console.log('POST response status:', response.status);
+                {
+                    name: 'allorigins.win',
+                    url: `https://api.allorigins.win/get?url=${encodeURIComponent(GOOGLE_SCRIPT_URL)}`
+                }
+            ];
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            let proxyIndex = 0;
+
+            function tentaInvio() {
+                if (proxyIndex >= proxyOptions.length) {
+                    // Tutti i proxy hanno fallito
+                    console.error('❌ Tutti i proxy hanno fallito');
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message';
+                    errorDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; max-width: 400px; z-index: 9999; padding: 20px;';
+                    errorDiv.innerHTML = `
+                        <h3>⚠️ Errore nell'invio</h3>
+                        <p>Impossibile inviare i dati a Google Sheets dopo diversi tentativi.</p>
+                        <p style="font-size: 0.9em; color: #666;">Il test è stato completato, ma i dati non sono stati salvati. Contatta l'amministratore.</p>
+                    `;
+                    document.body.appendChild(errorDiv);
+                    mostraModalRisultati(data);
+                    buttonText.textContent = originalText;
+                    submitBtn.disabled = false;
+                    loadingSpinner.classList.remove('active');
+                    return;
                 }
 
-                return response.text();
-            })
-            .then(result => {
-                console.log('✅ Risultato ricevuto:', result);
+                const proxy = proxyOptions[proxyIndex];
+                console.log(`[${proxyIndex + 1}/${proxyOptions.length}] Tentando con ${proxy.name}...`);
+                console.log(`URL Proxy: ${proxy.url.substring(0, 80)}...`);
 
-                // Mostra il modal con i risultati
-                mostraModalRisultati(data);
+                fetch(proxy.url, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    console.log(`${proxy.name}: HTTP ${response.status}`);
 
-            })
-            .catch(error => {
-                console.error('❌ Errore invio:', error.message);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
 
-                // Mostra messaggio di errore all'utente
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error-message';
-                errorDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; max-width: 400px; z-index: 9999; padding: 20px;';
-                errorDiv.innerHTML = `
-                    <h3>⚠️ Errore nell'invio</h3>
-                    <p>Impossibile inviare i dati a Google Sheets.</p>
-                    <p><strong>Errore:</strong> ${error.message}</p>
-                    <p style="font-size: 0.9em; color: #666;">Il test è stato completato, ma i dati non sono stati salvati. Contatta l'amministratore.</p>
-                `;
-                document.body.appendChild(errorDiv);
+                    return response.text();
+                })
+                .then(result => {
+                    console.log(`✅ Successo con ${proxy.name}:`, result.substring(0, 100));
+                    mostraModalRisultati(data);
+                    buttonText.textContent = originalText;
+                    submitBtn.disabled = false;
+                    loadingSpinner.classList.remove('active');
+                })
+                .catch(error => {
+                    console.error(`❌ ${proxy.name} fallito:`, error.message);
+                    proxyIndex++;
+                    tentaInvio();
+                });
+            }
 
-                // Comunque mostra il modal (senza dati salvati)
-                mostraModalRisultati(data);
-
-            })
-            .finally(() => {
-                // Ripristina il pulsante
-                buttonText.textContent = originalText;
-                submitBtn.disabled = false;
-                loadingSpinner.classList.remove('active');
-            });
+            tentaInvio();
         }
 
         // ==================== FUNZIONI MODAL ====================

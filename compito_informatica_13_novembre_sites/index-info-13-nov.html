@@ -703,64 +703,53 @@
             submitBtn.disabled = true;
             loadingSpinner.classList.add('active');
 
-            // Prima verifica se lo script è accessibile con GET
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: 'GET',
-                mode: 'cors'
-            }).then(response => {
-                console.log('Test GET response:', response);
+            // Usa un CORS proxy per aggirare le restrizioni CORS di Google Apps Script
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(GOOGLE_SCRIPT_URL)}`;
 
-                // Ora invia i dati reali con POST
-                return fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-            }).then(response => {
-                console.log('POST response:', response);
+            fetch(proxyUrl, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                console.log('POST response status:', response.status);
 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
                 return response.text();
-            }).then(result => {
-                console.log('Risultato ricevuto:', result);
+            })
+            .then(result => {
+                console.log('✅ Risultato ricevuto:', result);
 
                 // Mostra il modal con i risultati
                 mostraModalRisultati(data);
 
-            }).catch(error => {
-                console.error('Errore invio:', error);
+            })
+            .catch(error => {
+                console.error('❌ Errore invio:', error.message);
 
-                // ERRORE: Non possiamo usare no-cors con JSON
-                // Mostriamo un messaggio di errore informativo
-                const errorMsg = `❌ ERRORE: Non è possibile inviare i dati a Google Sheets
+                // Mostra messaggio di errore all'utente
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; max-width: 400px; z-index: 9999; padding: 20px;';
+                errorDiv.innerHTML = `
+                    <h3>⚠️ Errore nell'invio</h3>
+                    <p>Impossibile inviare i dati a Google Sheets.</p>
+                    <p><strong>Errore:</strong> ${error.message}</p>
+                    <p style="font-size: 0.9em; color: #666;">Il test è stato completato, ma i dati non sono stati salvati. Contatta l'amministratore.</p>
+                `;
+                document.body.appendChild(errorDiv);
 
-CAUSA: Stai aprendo il file HTML direttamente dal disco (file://)
-Questo blocca i CORS (Cross-Origin Resource Sharing) richiesti per comunicare con Google Apps Script.
+                // Comunque mostra il modal (senza dati salvati)
+                mostraModalRisultati(data);
 
-SOLUZIONE: Devi usare un server web locale.
-
-OPZIONE 1 - Python (Consigliato):
-1. Apri Prompt dei Comandi (Windows + R → digita "cmd")
-2. Copia e incolla: cd C:\\Users\\anton\\OneDrive\\Desktop\\slide-4H\\verifica-info-13-nov && python -m http.server 8000
-3. Premi INVIO
-4. Apri il browser: http://localhost:8000/index-info-13-nov.html
-
-OPZIONE 2 - Node.js:
-1. Apri Prompt dei Comandi
-2. Vai alla cartella: cd C:\\Users\\anton\\OneDrive\\Desktop\\slide-4H\\verifica-info-13-nov
-3. Esegui: npx http-server -p 8000
-4. Apri: http://localhost:8000/index-info-13-nov.html
-
-Dopo aver usato un server web locale, il test funzionerà perfettamente!`;
-
-                alert(errorMsg);
-            }).finally(() => {
+            })
+            .finally(() => {
                 // Ripristina il pulsante
                 buttonText.textContent = originalText;
                 submitBtn.disabled = false;
